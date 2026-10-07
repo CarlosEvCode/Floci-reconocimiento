@@ -7,7 +7,21 @@ const path = require('path')
 const { RekognitionClient, DetectLabelsCommand } = require('@aws-sdk/client-rekognition')
 
 //OPCIONAL (considerarse cuando se realice pruebas con Floci)
-//Respuesta prueba.... (pendiente)
+//Configuracion del mockup (dato de prueba personalizado)
+const { mockClient } = require('aws-sdk-client-mock')
+const rekognitionMock = mockClient(RekognitionClient)
+
+//Definir la respuesta personalizada
+//Cliente detecte evento, devolverá...
+rekognitionMock.on(DetectLabelsCommand).resolves({
+    Labels: [
+        {Name: 'Perro', Confidence: 95},
+        {Name: 'Gato', Confidence: 85},
+        {Name: 'Animal', Confidence: 90},
+        {Name: 'Mamífero', Confidence: 80}
+    ]
+})
+//fin del mockup
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -66,3 +80,9 @@ app.post('/api/analizar', upload.single('imagen'), async (req, res) => {
         })
     }
 })
+
+// Iniciar el servidor
+app.listen(port, () => {
+    console.log(`[SISTEMA] Servidor corriendo en http://localhost:${port}`)
+})
+
