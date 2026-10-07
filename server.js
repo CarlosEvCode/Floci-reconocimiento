@@ -66,8 +66,3 @@ app.post('/api/analizar', upload.single('imagen'), async (req, res) => {
         })
     }
 })
-
-//Iniciamos el servidor web
-app.listen(port, () => {
-    console.log(`Servidor ejecutandose en http://localhost:${port}`)
-})
