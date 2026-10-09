@@ -3,511 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Rekognition CLI - TUI</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <title>AWS Rekognition</title>
     <style>
-        :root {
-            --bg: #090c10;
-            --surface: #0d1117;
-            --surface-border: #30363d;
-            --surface-hover: #161b22;
-            --text-primary: #c9d1d9;
-            --text-muted: #8b949e;
-            --accent-green: #2ea043;
-            --accent-green-glow: #3fb950;
-            --accent-cyan: #58a6ff;
-            --accent-purple: #bc8cff;
-            --accent-yellow: #d29922;
-            --accent-red: #f85149;
-            --code-font: 'JetBrains Mono', 'Fira Code', monospace;
-        }
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: var(--code-font);
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
         }
 
         body {
-            background-color: var(--bg);
-            color: var(--text-primary);
+            background-color: #0d1117;
+            color: #c9d1d9;
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            padding: 24px;
-            background-image: 
-                radial-gradient(rgba(56, 139, 253, 0.05) 1px, transparent 1px),
-                radial-gradient(rgba(46, 160, 67, 0.04) 1px, transparent 1px);
-            background-size: 32px 32px;
-            background-position: 0 0, 16px 16px;
+            align-items: flex-start;
+            padding: 40px 20px;
         }
 
-        .terminal-container {
+        .container {
             width: 100%;
-            max-width: 860px;
-            background: var(--surface);
-            border: 1px solid var(--surface-border);
-            border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Barra de título estilo ventana TUI */
-        .terminal-header {
+            max-width: 600px;
             background: #161b22;
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--surface-border);
-            user-select: none;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
         }
 
-        .terminal-buttons {
-            display: flex;
-            gap: 8px;
+        .header {
+            font-size: 0.9rem;
+            color: #58a6ff;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px;
         }
 
-        .btn-circle {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
+        .prompt {
+            color: #7ee787;
         }
 
-        .btn-close { background: #ff5f56; }
-        .btn-min { background: #ffbd2e; }
-        .btn-max { background: #27c93f; }
-
-        .terminal-title {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            letter-spacing: 0.5px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .status-badge {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            background: rgba(46, 160, 67, 0.15);
-            color: var(--accent-green-glow);
-            border: 1px solid rgba(46, 160, 67, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent-green-glow);
-            box-shadow: 0 0 6px var(--accent-green-glow);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        .terminal-body {
-            padding: 24px 28px;
+        form {
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 14px;
+            margin-bottom: 24px;
         }
 
-        .cli-prompt-line {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.95rem;
-        }
-
-        .prompt-user { color: var(--accent-cyan); font-weight: 700; }
-        .prompt-at { color: var(--text-muted); }
-        .prompt-host { color: var(--accent-purple); font-weight: 700; }
-        .prompt-path { color: var(--accent-yellow); }
-        .prompt-char { color: var(--accent-green-glow); font-weight: 800; }
-        .prompt-cmd { color: var(--text-primary); font-weight: 500; }
-
-        /* Área de carga (Dropzone) estilo ASCII/TUI */
-        .drop-zone {
-            border: 2px dashed var(--surface-border);
-            background: rgba(22, 27, 34, 0.6);
-            border-radius: 8px;
-            padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--accent-cyan);
-            background: rgba(88, 166, 255, 0.05);
-        }
-
-        .drop-zone input[type="file"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .drop-icon {
-            font-size: 2rem;
-            color: var(--accent-cyan);
-            margin-bottom: 10px;
-        }
-
-        .drop-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-
-        .drop-subtitle {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-        }
-
-        .file-selected-name {
-            display: none;
-            margin-top: 12px;
-            padding: 6px 12px;
-            background: rgba(46, 160, 67, 0.1);
-            border: 1px solid rgba(46, 160, 67, 0.3);
-            border-radius: 4px;
-            font-size: 0.85rem;
-            color: var(--accent-green-glow);
-            word-break: break-all;
-        }
-
-        .btn-submit {
-            background: #238636;
-            color: #ffffff;
-            border: 1px solid rgba(240, 246, 252, 0.1);
-            padding: 12px 20px;
+        input[type="file"] {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 10px;
             border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 600;
+            color: #8b949e;
+            font-size: 0.85rem;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: background 0.2s ease, transform 0.1s ease;
-            width: 100%;
         }
 
-        .btn-submit:hover {
+        input[type="file"]::file-selector-button {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-family: inherit;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: #30363d;
+        }
+
+        button {
+            background: #238636;
+            color: #fff;
+            border: 1px solid rgba(240, 246, 252, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        button:hover {
             background: #2ea043;
         }
 
-        .btn-submit:active {
-            transform: scale(0.99);
-        }
-
-        .btn-submit:disabled {
+        button:disabled {
             background: #21262d;
             color: #6e7681;
             cursor: not-allowed;
-            border-color: transparent;
         }
 
-        /* Contenedor de Resultados TUI */
-        .results-section {
-            display: none;
+        .results {
+            border-top: 1px solid #30363d;
+            padding-top: 16px;
+        }
+
+        .results h3 {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        ul {
+            list-style: none;
+            display: flex;
             flex-direction: column;
-            gap: 16px;
-            border-top: 1px solid var(--surface-border);
-            padding-top: 20px;
-            animation: fadeIn 0.3s ease;
+            gap: 8px;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .results-header {
+        li {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding-bottom: 8px;
         }
 
-        .preview-container {
-            display: flex;
-            justify-content: center;
-            background: #000;
-            border: 1px solid var(--surface-border);
-            border-radius: 6px;
-            padding: 10px;
-            max-height: 220px;
-            overflow: hidden;
+        .label-name {
+            color: #79c0ff;
         }
 
-        .preview-container img {
-            max-height: 200px;
-            max-width: 100%;
-            object-fit: contain;
-            border-radius: 4px;
-        }
-
-        /* Tabla / Lista estilo CLI */
-        .cli-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-        }
-
-        .cli-table th {
-            text-align: left;
-            padding: 8px 12px;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid var(--surface-border);
-        }
-
-        .cli-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            vertical-align: middle;
-        }
-
-        .cli-table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .label-tag {
-            color: var(--accent-cyan);
+        .confidence {
+            color: #7ee787;
             font-weight: 600;
         }
 
-        .progress-bar-container {
-            width: 100%;
-            max-width: 200px;
-            height: 8px;
-            background: #21262d;
-            border-radius: 4px;
-            overflow: hidden;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 10px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #238636, #3fb950);
-            border-radius: 4px;
-        }
-
-        .confidence-val {
-            color: var(--accent-green-glow);
-            font-weight: 600;
+        .status-msg {
+            color: #8b949e;
             font-size: 0.85rem;
         }
 
-        /* Consola de carga / loader */
-        .terminal-loader {
-            display: none;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid var(--accent-cyan);
-            font-size: 0.85rem;
-            color: var(--accent-cyan);
-            animation: pulse 1.5s infinite;
-        }
-
-        .error-box {
-            display: none;
-            padding: 14px;
+        .error-msg {
+            color: #f85149;
             background: rgba(248, 81, 73, 0.1);
-            border: 1px solid rgba(248, 81, 73, 0.4);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            padding: 10px;
             border-radius: 6px;
-            color: var(--accent-red);
             font-size: 0.85rem;
-        }
-
-        /* Footer */
-        .terminal-footer {
-            padding: 10px 18px;
-            background: #090c10;
-            border-top: 1px solid var(--surface-border);
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            color: var(--text-muted);
         }
     </style>
 </head>
 <body>
 
-    <div class="terminal-container">
-        <!-- Header / Window Bar -->
-        <div class="terminal-header">
-            <div class="terminal-buttons">
-                <span class="btn-circle btn-close"></span>
-                <span class="btn-circle btn-min"></span>
-                <span class="btn-circle btn-max"></span>
-            </div>
-            <div class="terminal-title">
-                <span>aws-rekognition@floci: ~</span>
-            </div>
-            <div class="status-badge">
-                <span class="status-dot"></span>
-                <span>ONLINE</span>
-            </div>
+    <div class="container">
+        <div class="header">
+            <span class="prompt">$</span> aws rekognition detect-labels
         </div>
 
-        <!-- Terminal Main Body -->
-        <div class="terminal-body">
-            <!-- CLI Command representation -->
-            <div class="cli-prompt-line">
-                <span class="prompt-user">senati</span><span class="prompt-at">@</span><span class="prompt-host">ubuntu</span>:<span class="prompt-path">~/Floci-reconocimiento</span><span class="prompt-char">$</span>
-                <span class="prompt-cmd">aws rekognition detect-labels --image-file</span>
-            </div>
+        <form id="uploadForm">
+            <input type="file" name="imagen" id="imagen" accept="image/*" required>
+            <button type="submit" id="btnSubmit">Analizar Imagen</button>
+        </form>
 
-            <!-- Upload Form -->
-            <form id="uploadForm">
-                <div class="drop-zone" id="dropZone">
-                    <input type="file" name="imagen" id="imagen" accept="image/*" required>
-                    <div class="drop-icon">⇪</div>
-                    <div class="drop-title">[ SELECCIONAR O ARRASTRAR IMAGEN ]</div>
-                    <div class="drop-subtitle">Formatos soportados: PNG, JPG, JPEG, WEBP</div>
-                    <div class="file-selected-name" id="fileNameDisplay"></div>
-                </div>
-
-                <div style="margin-top: 16px;">
-                    <button type="submit" class="btn-submit" id="btnSubmit">
-                        <span>▶ ANALIZAR ETIQUETAS</span>
-                    </button>
-                </div>
-            </form>
-
-            <!-- Loader / Processing state -->
-            <div class="terminal-loader" id="loaderBox">
-                <span>⚡ [PROCESANDO] Enviando imagen al endpoint de AWS Rekognition...</span>
-            </div>
-
-            <!-- Error Box -->
-            <div class="error-box" id="errorBox"></div>
-
-            <!-- Results Section -->
-            <div class="results-section" id="resultsSection">
-                <div class="results-header">
-                    <span>> RESULTADOS DEL ANÁLISIS</span>
-                    <span id="labelCountBadge" style="color: var(--accent-green-glow);">0 etiquetas detectadas</span>
-                </div>
-
-                <div class="preview-container" id="previewContainer" style="display: none;">
-                    <img id="imagePreview" src="" alt="Vista previa">
-                </div>
-
-                <table class="cli-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Etiqueta / Concepto</th>
-                            <th>Nivel de Confianza</th>
-                            <th>Porcentaje</th>
-                        </tr>
-                    </thead>
-                    <tbody id="labelsTableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="terminal-footer">
-            <span>AWS SDK v3 • Express • Floci</span>
-            <span>Port: 3000 • TUI Dark Mode</span>
+        <div class="results">
+            <h3>Resultados</h3>
+            <ul id="listaEtiquetas">
+                <li class="status-msg">Seleccione una imagen y haga clic en Analizar.</li>
+            </ul>
         </div>
     </div>
 
     <script>
         const form = document.getElementById('uploadForm')
         const fileInput = document.getElementById('imagen')
-        const dropZone = document.getElementById('dropZone')
-        const fileNameDisplay = document.getElementById('fileNameDisplay')
         const btnSubmit = document.getElementById('btnSubmit')
-        const loaderBox = document.getElementById('loaderBox')
-        const errorBox = document.getElementById('errorBox')
-        const resultsSection = document.getElementById('resultsSection')
-        const labelsTableBody = document.getElementById('labelsTableBody')
-        const labelCountBadge = document.getElementById('labelCountBadge')
-        const imagePreview = document.getElementById('imagePreview')
-        const previewContainer = document.getElementById('previewContainer')
+        const listaEtiquetas = document.getElementById('listaEtiquetas')
 
-        // Mostrar nombre y preview al seleccionar archivo
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0]
-            if (file) {
-                fileNameDisplay.style.display = 'inline-block'
-                fileNameDisplay.innerText = `📄 Archivo cargado: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`
-                
-                // Vista previa de imagen
-                const reader = new FileReader()
-                reader.onload = (event) => {
-                    imagePreview.src = event.target.result
-                    previewContainer.style.display = 'flex'
-                }
-                reader.readAsDataURL(file)
-            }
-        })
-
-        // Efectos Drag & Drop visuales
-        ;['dragenter', 'dragover'].forEach(name => {
-            dropZone.addEventListener(name, (e) => {
-                e.preventDefault()
-                dropZone.classList.add('dragover')
-            })
-        })
-        ;['dragleave', 'drop'].forEach(name => {
-            dropZone.addEventListener(name, (e) => {
-                e.preventDefault()
-                dropZone.classList.remove('dragover')
-            })
-        })
-
-        // Enviar formulario
         form.addEventListener('submit', async (e) => {
             e.preventDefault()
 
-            if (!fileInput.files || fileInput.files.length === 0) return
+            if (!fileInput.files[0]) return
 
             const formData = new FormData(form)
-
-            // Estado de carga
             btnSubmit.disabled = true
-            loaderBox.style.display = 'block'
-            errorBox.style.display = 'none'
-            resultsSection.style.display = 'none'
-            labelsTableBody.innerHTML = ''
+            listaEtiquetas.innerHTML = `<li class="status-msg">Procesando con AWS Rekognition...</li>`
 
             try {
                 const response = await fetch('/api/analizar', {
@@ -516,43 +194,31 @@
                 })
 
                 const data = await response.json()
-
-                loaderBox.style.display = 'none'
                 btnSubmit.disabled = false
 
                 if (data.success && Array.isArray(data.labels)) {
-                    resultsSection.style.display = 'flex'
-                    labelCountBadge.innerText = `${data.labels.length} etiqueta(s) detectada(s)`
+                    listaEtiquetas.innerHTML = ''
+                    if (data.labels.length === 0) {
+                        listaEtiquetas.innerHTML = `<li class="status-msg">No se detectaron etiquetas.</li>`
+                        return
+                    }
 
-                    data.labels.forEach((label, index) => {
+                    data.labels.forEach(label => {
+                        const li = document.createElement('li')
                         const confidence = Number(label.Confidence).toFixed(1)
-                        const tr = document.createElement('tr')
-
-                        tr.innerHTML = `
-                            <td style="color: var(--text-muted); font-size: 0.8rem;">0${index + 1}</td>
-                            <td><span class="label-tag">${label.Name}</span></td>
-                            <td>
-                                <div class="progress-bar-container">
-                                    <div class="progress-fill" style="width: ${confidence}%;"></div>
-                                </div>
-                            </td>
-                            <td><span class="confidence-val">${confidence}%</span></td>
+                        li.innerHTML = `
+                            <span class="label-name">${label.Name}</span>
+                            <span class="confidence">${confidence}%</span>
                         `
-                        labelsTableBody.appendChild(tr)
+                        listaEtiquetas.appendChild(li)
                     })
                 } else {
-                    errorBox.style.display = 'block'
-                    errorBox.innerHTML = `
-                        <strong>❌ [ERROR]:</strong> ${data.error || 'Fallo en la inferencia'}<br>
-                        ${data.details ? `<small style="color: var(--text-muted);">${data.details}</small>` : ''}
-                    `
+                    listaEtiquetas.innerHTML = `<li class="error-msg">${data.error || 'Error al procesar la imagen'}</li>`
                 }
             } catch (error) {
                 console.error(error)
-                loaderBox.style.display = 'none'
                 btnSubmit.disabled = false
-                errorBox.style.display = 'block'
-                errorBox.innerHTML = `<strong>❌ [ERROR DE CONEXIÓN]:</strong> No se pudo comunicar con el servidor backend.`
+                listaEtiquetas.innerHTML = `<li class="error-msg">Error de conexión con el servidor.</li>`
             }
         })
     </script>
