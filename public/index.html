@@ -19,7 +19,7 @@
             display: flex;
         }
 
-        /* Barra Lateral (Sidebar) */
+        /* Barra Lateral */
         .sidebar {
             width: 220px;
             background: #161b22;
@@ -66,7 +66,7 @@
             font-weight: 600;
         }
 
-        /* Área de Contenido Principal */
+        /* Contenido Principal */
         .main-content {
             flex: 1;
             display: flex;
@@ -77,7 +77,7 @@
 
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
             background: #161b22;
             border: 1px solid #30363d;
             border-radius: 8px;
@@ -203,6 +203,19 @@
             border-radius: 6px;
             font-size: 0.85rem;
         }
+
+        pre.raw-output {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #c9d1d9;
+            overflow-x: auto;
+            max-height: 350px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -210,30 +223,71 @@
     <!-- BARRA LATERAL -->
     <aside class="sidebar">
         <div class="sidebar-title">Servicios</div>
-        <button class="nav-btn active">Rekognition</button>
-        <button class="nav-btn">Textract</button>
+        <button id="btnNavRekognition" class="nav-btn active" onclick="cambiarServicio('rekognition')">Rekognition</button>
+        <button id="btnNavTextract" class="nav-btn" onclick="cambiarServicio('textract')">Textract</button>
     </aside>
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="main-content">
         <div class="container">
-            <div class="header">
-                <span class="prompt">$</span> aws rekognition detect-labels
-            </div>
-            <form id="uploadForm">
-                <input type="file" name="imagen" id="imagen" accept="image/*" required>
-                <button type="submit" id="btnSubmit" class="btn-action">Analizar Imagen</button>
-            </form>
-            <div class="results">
-                <h3>Resultados</h3>
-                <ul id="listaEtiquetas">
-                    <li class="status-msg">Seleccione una imagen y haga clic en Analizar.</li>
-                </ul>
-            </div>
+
+            <!-- SECCIÓN REKOGNITION -->
+            <section id="panelRekognition">
+                <div class="header">
+                    <span class="prompt">$</span> aws rekognition detect-labels
+                </div>
+                <form id="uploadForm">
+                    <input type="file" name="imagen" id="imagen" accept="image/*" required>
+                    <button type="submit" id="btnSubmit" class="btn-action">Analizar Imagen</button>
+                </form>
+                <div class="results">
+                    <h3>Resultados</h3>
+                    <ul id="listaEtiquetas">
+                        <li class="status-msg">Seleccione una imagen y haga clic en Analizar.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECCIÓN TEXTRACT -->
+            <section id="panelTextract" style="display: none;">
+                <div class="header">
+                    <span class="prompt">$</span> aws textract detect-document-text
+                </div>
+                <form id="formTextract">
+                    <input type="file" name="documento" id="documento" accept=".pdf" required>
+                    <button type="submit" id="btnSubmitTextract" class="btn-action">Analizar Documento</button>
+                </form>
+                <div class="results">
+                    <h3>Información del Documento</h3>
+                    <pre id="rawOutputTextract" class="raw-output">Seleccione un archivo PDF (&lt; 5 MB) y haga clic en Analizar.</pre>
+                </div>
+            </section>
+
         </div>
     </main>
 
     <script>
+        // Navegación entre servicios
+        function cambiarServicio(servicio) {
+            const panelRekognition = document.getElementById('panelRekognition')
+            const panelTextract = document.getElementById('panelTextract')
+            const btnRekognition = document.getElementById('btnNavRekognition')
+            const btnTextract = document.getElementById('btnNavTextract')
+
+            if (servicio === 'rekognition') {
+                panelRekognition.style.display = 'block'
+                panelTextract.style.display = 'none'
+                btnRekognition.classList.add('active')
+                btnTextract.classList.remove('active')
+            } else {
+                panelRekognition.style.display = 'none'
+                panelTextract.style.display = 'block'
+                btnTextract.classList.add('active')
+                btnRekognition.classList.remove('active')
+            }
+        }
+
+        // Rekognition
         const form = document.getElementById('uploadForm')
         const fileInput = document.getElementById('imagen')
         const btnSubmit = document.getElementById('btnSubmit')
@@ -277,6 +331,45 @@
                 console.error(error)
                 btnSubmit.disabled = false
                 listaEtiquetas.innerHTML = `<li class="error-msg">Error de conexión con el servidor.</li>`
+            }
+        })
+
+        // Textract
+        const formTextract = document.getElementById('formTextract')
+        const inputDocumento = document.getElementById('documento')
+        const btnSubmitTextract = document.getElementById('btnSubmitTextract')
+        const rawOutputTextract = document.getElementById('rawOutputTextract')
+
+        formTextract.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const file = inputDocumento.files[0]
+            if (!file) return
+
+            // Validación de tamaño (< 5 MB)
+            const MAX_SIZE = 5 * 1024 * 1024
+            if (file.size > MAX_SIZE) {
+                rawOutputTextract.textContent = 'Error: El archivo excede el tamaño máximo permitido de 5 MB.'
+                return
+            }
+
+            const formData = new FormData(formTextract)
+            btnSubmitTextract.disabled = true
+            rawOutputTextract.textContent = 'Procesando documento con AWS Textract...'
+
+            try {
+                const response = await fetch('/api/textract', {
+                    method: 'POST',
+                    body: formData
+                })
+                const data = await response.json()
+                btnSubmitTextract.disabled = false
+
+                // Informacion formateada en json
+                rawOutputTextract.textContent = JSON.stringify(data, null, 2)
+            } catch (error) {
+                console.error(error)
+                btnSubmitTextract.disabled = false
+                rawOutputTextract.textContent = 'Error de conexión con el servidor.'
             }
         })
     </script>

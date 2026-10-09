@@ -6,6 +6,9 @@ const path = require('path')
 //Cliente que gestiona el servicio AWS
 const { RekognitionClient, DetectLabelsCommand } = require('@aws-sdk/client-rekognition')
 
+//Cliente que gestiona el servicio de textract
+const { TextractClient, DetectDocumentTextCommand } = require('@aws-sdk/client-textract')
+
 //OPCIONAL (considerarse cuando se realice pruebas con Floci)
 //Configuracion del mockup (dato de prueba personalizado)
 const { mockClient } = require('aws-sdk-client-mock')
@@ -23,6 +26,20 @@ rekognitionMock.on(DetectLabelsCommand).resolves({
 })
 //fin del mockup
 
+//Configuracion del mockup para textract
+const textractMock = mockClient(TextractClient)
+
+textractMock.on(DetectDocumentTextCommand).resolves({
+    DocumentMetadata: { Pages:1 },
+    Blocks: [
+        { BlockType: 'PAGE', Id: '1' },
+        { BlockType: 'LINE', Id: '2', Text: 'Ejemplo de texto', Confidence: 99.9 },
+        { BlockType: 'WORD', Id: '3', Text: 'Otro ejemplo', Confidence: 99.9 },
+        { BlockType: 'LINE', Id: '4', Text: 'Documento procesado correctamente', Confidence: 98.5 },
+
+    ]
+})
+
 const app = express()
 const port = process.env.PORT || 3000
 
@@ -35,6 +52,18 @@ const rekognitionClient = new RekognitionClient({
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
     }
 })
+
+
+//Iniciar el servicio textract
+const textractClient = new TextractClient({
+    region: process.env.AWS_REGION || 'us-east-1',
+    endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
+    }
+})
+
 
 // Configuración de multer para manejar la carga de archivos
 const upload = multer({ storage: multer.memoryStorage()})
@@ -75,6 +104,44 @@ app.post('/api/analizar', upload.single('imagen'), async (req, res) => {
         console.error('Error al analizar la imagen:', error)
         res.status(500).json({
             error: 'Error al analizar la imagen',
+            details: error.message,
+            code: error.code
+        })
+    }
+})
+
+//Ruta para textract
+app.post('/api/textract', upload.single('documento'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se ha proporcionado ningún documento' })
+        }
+
+        //Validar tamaño maximo 5MB
+        const maxSize = 5 * 1024 * 1024
+        if (req.file.size > maxSize) {
+            return res.status(400).json({ error: 'El documento excede el tamaño máximo permitido de 5MB' })
+        }
+
+        // Parametros para DetectDocumentText
+        const params = {
+            Document: { Bytes: req.file.buffer }
+        }
+
+        const command = new DetectDocumentTextCommand(params)
+        const response = await textractClient.send(command)
+
+        //Enviar la respuesta al front como JSON
+        res.json({
+            success: true,
+            documentMetadata: response.DocumentMetadata,
+            blocks: response.Blocks
+        })
+
+    } catch (error) {
+        console.error('Error al procesar el documento:', error)
+        res.status(500).json({
+            error: 'Error al procesar el documento',
             details: error.message,
             code: error.code
         })
