@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Rekognition</title>
+    <title>AWS Playground - Floci</title>
     <style>
         * {
             margin: 0;
@@ -16,6 +16,59 @@
             background-color: #0d1117;
             color: #c9d1d9;
             min-height: 100vh;
+            display: flex;
+        }
+
+        /* Barra Lateral (Sidebar) */
+        .sidebar {
+            width: 220px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-title {
+            font-size: 0.85rem;
+            color: #58a6ff;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #8b949e;
+            border: 1px solid transparent;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .nav-btn:hover {
+            background: #21262d;
+            color: #c9d1d9;
+        }
+
+        .nav-btn.active {
+            background: #21262d;
+            color: #58a6ff;
+            border-color: #388bfd;
+            font-weight: 600;
+        }
+
+        /* Área de Contenido Principal */
+        .main-content {
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -75,7 +128,7 @@
             background: #30363d;
         }
 
-        button {
+        button.btn-action {
             background: #238636;
             color: #fff;
             border: 1px solid rgba(240, 246, 252, 0.1);
@@ -87,11 +140,11 @@
             font-family: inherit;
         }
 
-        button:hover {
+        button.btn-action:hover {
             background: #2ea043;
         }
 
-        button:disabled {
+        button.btn-action:disabled {
             background: #21262d;
             color: #6e7681;
             cursor: not-allowed;
@@ -154,23 +207,31 @@
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <span class="prompt">$</span> aws rekognition detect-labels
-        </div>
+    <!-- BARRA LATERAL -->
+    <aside class="sidebar">
+        <div class="sidebar-title">Servicios</div>
+        <button class="nav-btn active">Rekognition</button>
+        <button class="nav-btn">Textract</button>
+    </aside>
 
-        <form id="uploadForm">
-            <input type="file" name="imagen" id="imagen" accept="image/*" required>
-            <button type="submit" id="btnSubmit">Analizar Imagen</button>
-        </form>
-
-        <div class="results">
-            <h3>Resultados</h3>
-            <ul id="listaEtiquetas">
-                <li class="status-msg">Seleccione una imagen y haga clic en Analizar.</li>
-            </ul>
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+        <div class="container">
+            <div class="header">
+                <span class="prompt">$</span> aws rekognition detect-labels
+            </div>
+            <form id="uploadForm">
+                <input type="file" name="imagen" id="imagen" accept="image/*" required>
+                <button type="submit" id="btnSubmit" class="btn-action">Analizar Imagen</button>
+            </form>
+            <div class="results">
+                <h3>Resultados</h3>
+                <ul id="listaEtiquetas">
+                    <li class="status-msg">Seleccione una imagen y haga clic en Analizar.</li>
+                </ul>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
         const form = document.getElementById('uploadForm')
@@ -180,7 +241,6 @@
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault()
-
             if (!fileInput.files[0]) return
 
             const formData = new FormData(form)
@@ -192,7 +252,6 @@
                     method: 'POST',
                     body: formData
                 })
-
                 const data = await response.json()
                 btnSubmit.disabled = false
 
@@ -202,7 +261,6 @@
                         listaEtiquetas.innerHTML = `<li class="status-msg">No se detectaron etiquetas.</li>`
                         return
                     }
-
                     data.labels.forEach(label => {
                         const li = document.createElement('li')
                         const confidence = Number(label.Confidence).toFixed(1)
